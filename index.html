@@ -2318,7 +2318,10 @@ var qrcode = function() {
     }
   });
   document.getElementById('resetBtn').addEventListener('click', function(){
-    writeCount(TOTAL_SCREENS);
+    var updated = { remaining: TOTAL_SCREENS, total: TOTAL_SCREENS, updatedAt: Date.now() };
+    counterRef.set(updated)
+      .then(function(){ flashSaveNote(); })
+      .catch(function(){ flashSaveNote("Couldn't save — check your connection."); });
   });
   function looksLikeRealPublicUrl(url){
     // A real published link is a normal, short https:// address.
