@@ -2755,7 +2755,7 @@ if(APPCHECK_SITE_KEY){ firebase.appCheck().activate(APPCHECK_SITE_KEY, true); }
 var auth = firebase.auth(), db = firebase.database(), SV = firebase.database.ServerValue;
 
 var me = null, isStaff = false, slots = {}, claims = {}, myClaim = null, lastLeft = null;
-var accepted = false, uidRef = null, claimRef = null, allRef = null;
+var accepted = false, uidRef = null, claimRef = null, allRef = null, authError = '';
 try{ accepted = sessionStorage.getItem('vu_terms') === '1'; }catch(e){}
 
 function show(id){ $(id).classList.add('show'); }
@@ -2787,7 +2787,7 @@ function renderCounter(){
 
 /* ---------- auth ---------- */
 auth.onAuthStateChanged(async function(u){
-  if(!u){ try{ await auth.signInAnonymously(); }catch(e){ $('barCaption').textContent = 'Could not connect. Please reload.'; } return; }
+  if(!u){ try{ await auth.signInAnonymously(); }catch(e){ authError = e.code || e.message || 'unknown'; $('barCaption').textContent = 'Could not connect (' + authError + '). Please reload.'; } return; }
   me = u; isStaff = false;
   if(!u.isAnonymous){
     try{ isStaff = (await db.ref('staff/' + u.uid).once('value')).val() === true; }catch(e){}
@@ -2855,7 +2855,8 @@ $('claimSubmit').addEventListener('click', async function(){
   if(name.length < 2){ err.textContent = 'Please enter your full name.'; return; }
   if(!/^\+614\d{8}$/.test(phone)){ err.textContent = 'Please enter a valid Australian mobile number, e.g. 0412 345 678.'; return; }
   if(!/^S\d{7}$/.test(sid)){ err.textContent = 'Student ID must be an “s” followed by 7 digits, e.g. s1234567.'; return; }
-  if(!me || !me.isAnonymous){
+  if(!me){ err.textContent = 'Could not sign in to the system' + (authError ? ' (' + authError + ')' : '') + '. Please reload the page and try again.'; return; }
+  if(!me.isAnonymous){
     if(!confirm('You are signed in as staff. Sign out to submit this claim as a student?')) return;
     await auth.signOut(); isStaff = false;
     for(var w = 0; w < 40 && !(me && me.isAnonymous); w++){ await new Promise(function(r){ setTimeout(r, 150); }); }
