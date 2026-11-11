@@ -319,6 +319,8 @@
   }
 
 [hidden]{display:none !important}
+.follow{font-size:13px;color:#4a5254;margin:0 0 4px}
+.follow a{color:var(--vu-blue-deep);font-weight:600;text-decoration:underline;text-underline-offset:2px}
 .claim-btn{width:auto;min-width:220px;margin-top:22px;position:relative;padding:14px 28px;font-size:16px}
 .claim-btn:disabled{opacity:.4;cursor:not-allowed}
 .status-card{position:relative;margin-top:16px;width:min(420px,84vw);background:var(--tint);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:14px;text-align:left}
@@ -362,7 +364,12 @@
   <div class="done-banner" id="doneBanner">All PCs have been claimed</div>
 </main>
 
-<footer><button class="staff-link" id="staffOpenBtn">Staff access</button></footer>
+<footer>
+  <p class="follow">Like this project? Follow me on
+    <a href="https://github.com/EnricoBertan" target="_blank" rel="noopener">GitHub</a> and
+    <a href="https://www.linkedin.com/in/enrico-bertan-283215197/" target="_blank" rel="noopener">LinkedIn</a>.</p>
+  <button class="staff-link" id="staffOpenBtn">Staff access</button>
+</footer>
 
 <!-- Disclaimer -->
 <div class="overlay" id="termsOverlay"><div class="modal wide">
@@ -385,8 +392,8 @@
   <p class="sub">A volunteer will review your claim.</p>
   <div class="error-msg" id="claimError"></div>
   <label class="field">Full name<input id="fName" type="text" autocomplete="name" maxlength="80"></label>
-  <label class="field">Mobile number<input id="fPhone" type="tel" autocomplete="tel" maxlength="20"></label>
-  <label class="field">Student ID<input id="fSid" type="text" maxlength="15" autocapitalize="characters"></label>
+  <label class="field">Australian mobile number<input id="fPhone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="04XX XXX XXX"></label>
+  <label class="field">Student ID<input id="fSid" type="text" maxlength="8" autocomplete="off" autocapitalize="characters" placeholder="s1234567"></label>
   <p class="fine">We collect these details only to manage this giveaway. Only the volunteers running it can see them.</p>
   <button class="primary" id="claimSubmit">Submit claim</button>
   <button class="ghost" id="claimCancel">Cancel</button>
@@ -2843,11 +2850,17 @@ function shuffle(a){ for(var i = a.length - 1; i > 0; i--){ var j = Math.floor(M
 
 $('claimSubmit').addEventListener('click', async function(){
   var err = $('claimError'), btn = this;
-  var name = $('fName').value.trim(), phone = $('fPhone').value.trim(), sid = $('fSid').value.trim().toUpperCase();
+  var name = $('fName').value.trim(), sid = $('fSid').value.trim().toUpperCase();
+  var phone = $('fPhone').value.replace(/[\s()-]/g, '').replace(/^0/, '+61').replace(/^61/, '+61');
   if(name.length < 2){ err.textContent = 'Please enter your full name.'; return; }
-  if(!/^[0-9+() -]{8,20}$/.test(phone)){ err.textContent = 'Please enter a valid mobile number.'; return; }
-  if(!/^[A-Z0-9]{5,15}$/.test(sid)){ err.textContent = 'Please enter a valid student ID (letters and numbers only).'; return; }
-  if(!me || !me.isAnonymous){ err.textContent = 'Please sign out of staff access first.'; return; }
+  if(!/^\+614\d{8}$/.test(phone)){ err.textContent = 'Please enter a valid Australian mobile number, e.g. 0412 345 678.'; return; }
+  if(!/^S\d{7}$/.test(sid)){ err.textContent = 'Student ID must be an “s” followed by 7 digits, e.g. s1234567.'; return; }
+  if(!me || !me.isAnonymous){
+    if(!confirm('You are signed in as staff. Sign out to submit this claim as a student?')) return;
+    await auth.signOut(); isStaff = false;
+    for(var w = 0; w < 40 && !(me && me.isAnonymous); w++){ await new Promise(function(r){ setTimeout(r, 150); }); }
+    if(!(me && me.isAnonymous)){ err.textContent = 'Could not reset the session. Please reload the page.'; return; }
+  }
   btn.disabled = true; err.textContent = 'Submitting…';
   try{
     var snap = await db.ref('slots').once('value'), all = snap.val() || {};
